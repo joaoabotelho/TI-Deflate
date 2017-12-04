@@ -1,21 +1,20 @@
 /*Author: Rui Pedro Paiva
-Teoria da Informação, LEI, 2007/2008*/
+  Teoria da Informação, LEI, 2007/2008*/
 
 #include <stdio.h>
 #include <string.h>
 
-
 typedef struct hfnode
 {
-	short index;  //se folha, guarda posição no alfabeto; senão, -1;
-	short level; // nível do nó na árvore
-	struct hfnode *left, *right;  //referências para os filhos direito e esquerdo: é folha se ambos forem NULL	
+  short index;  //se folha, guarda posição no alfabeto; senão, -1;
+  short level; // nível do nó na árvore
+  struct hfnode *left, *right;  //referências para os filhos direito e esquerdo: é folha se ambos forem NULL
 } HFNode;
 
 
 typedef struct huffmantree
 {
-	HFNode *root, *curNode;  //raíz da árvore e nó actual na travessia
+  HFNode *root, *curNode;  //raíz da árvore e nó actual na travessia
 } HuffmanTree;
 
 
