@@ -240,6 +240,7 @@ int main(int argc, char** argv)
         print_blocks(third_block, HDIST + 1);
 
         read_data(gzFile, second_ht, third_ht, &availBits, &rb);
+
         //int i;
         //for(i = 0; i < 257 + HLIT; i++){
         //printf("%d -> %d\n", i, hlit_cod_comp[i]);
@@ -274,7 +275,7 @@ int main(int argc, char** argv)
 char getBits(FILE *f, char *availBits, char needBits, unsigned int *rb){
     char result;
     unsigned char byte;
-    if(*availBits < needBits){
+    while(*availBits < needBits){
         fread(&byte, 1, 1, f);
         *rb = (byte << (*availBits)) | *rb;
         *availBits += 8;
@@ -396,38 +397,41 @@ void getBlockHuffmanCode(FILE *f, block_p head, HuffmanTree *ht, char *availBits
 }
 
 void read_data(FILE *f, HuffmanTree *comp_lit, HuffmanTree *distances, char *availBits, unsigned int *rb){
-    int n, i, lenght, backwards_distance;
+    int n, i, j, k, lenght, backwards_distance;
     char bit;
+    unsigned char arr[getOrigFileSize(f)];
 
+    i = 0;
     while(1){
         bit = getBits(f, availBits, 1, rb) + '0';
         n = nextNode(comp_lit, bit);
 
         if(n >= 0){
             if(n == 256){
-                printf("END");
+                printf("%s", arr);
+                printf("\nEND\n");
                 return;
             }
 
             if(n < 257)
-                printf("literal -> %d\n", n);
+                arr[i++] = (char)n;
 
             else{
-                resetCurNode(comp_lit);
-                while((n = nextNode(comp_lit, bit))<0)
+                lenght = getBits(f, availBits, lengths[n-257].bits, rb) + lengths[n-257].shift;
+
+                do{
                     bit = getBits(f, availBits, 1, rb) + '0';
+                    n = nextNode(distances, bit);
+                }while(n < 0);
 
-                lenght = n + lengths[n - 257].shift;
-                while((n = nextNode(distances, bit))<0)
-                    bit = getBits(f, availBits, 1, rb) + '0';
+                backwards_distance = getBits(f, availBits, dists[n].bits, rb) + dists[n].shift;
 
-                resetCurNode(distances);
-
-                backwards_distance = n + dists[n - 257].shift;
-
-                printf("lenght: %d\n backwards_distance: %d\n", lenght, backwards_distance);
-
+                k = i;
+                for(j = k - backwards_distance; j < k - backwards_distance + lenght; j++){
+                    arr[i++] = arr[j];
+                }
             }
+            resetCurNode(distances);
             resetCurNode(comp_lit);
             //getchar();
         }
