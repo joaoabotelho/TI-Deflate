@@ -26,3 +26,4 @@ int findNode(HuffmanTree *hft, char* s, short verbose);  //procura código s a pa
 int findNode(HuffmanTree *hft, char *s, HFNode *cur, short verbose);  //procura código a partir do nó cur
 short isLeaf(HFNode *n);
 void resetCurNode (HuffmanTree *hft);
+void print_htree(HFNode *node,int len);

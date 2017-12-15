@@ -232,3 +232,18 @@ void resetCurNode (HuffmanTree *hft)
 {
   hft->curNode = hft->root;
 }
+
+//baseado em http://www.geeksforgeeks.org/print-binary-tree-vertical-order/
+void print_htree(HFNode *node,int len){
+	if(node == NULL)
+		return;
+	len += 10;
+
+	print_htree(node->right,len);
+
+	for(int i = 10; i < len; i++)
+		printf(" ");
+	printf("%d\n",node->index);
+
+	print_htree(node->left,len);
+}

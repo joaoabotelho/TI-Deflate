@@ -2,6 +2,8 @@
   Teoria da Informação, LEI, 2007/2008*/
 
 #include <cstdlib>
+#include <stdlib.h>
+#include <string.h>
 
 #include "gzip.h"
 
@@ -13,7 +15,7 @@ int main(int argc, char** argv)
     //--- Gzip file management variables
     FILE *gzFile;  //ponteiro para o ficheiro a abrir
     long fileSize;
-    long origFileSize;
+    //long origFileSize;
     int numBlocks = 0;
     gzipHeader gzh;
     unsigned char byte;  //variável temporária para armazenar um byte lido directamente do ficheiro
@@ -150,7 +152,7 @@ int main(int argc, char** argv)
         printf("Linha de comando invalida!!!");
         return -1;
     }
-    char * fileName = argv[1];
+    fileName = argv[1];
 
     //--- processar ficheiro
     gzFile = fopen(fileName, "rb");
@@ -160,7 +162,8 @@ int main(int argc, char** argv)
 
     //ler tamanho do ficheiro original (acrescentar: e definir Vector com símbolos
     origFileSize = getOrigFileSize(gzFile);
-
+    content = (unsigned char*)malloc(sizeof(unsigned char) * origFileSize);
+    data_read = 0;
 
     //--- ler cabeçalho
     int erro = getHeader(gzFile, &gzh);
@@ -173,6 +176,7 @@ int main(int argc, char** argv)
     //--- Para todos os blocos encontrados
     char BFINAL;
 
+    printf("STARTING\n");
     do
     {
         //--- ler o block header: primeiro byte depois do cabeçalho do ficheiro
@@ -200,13 +204,13 @@ int main(int argc, char** argv)
         //mine//
 
         char HLIT = getBits(gzFile, &availBits, 5, &rb);
-        printf("HLIT -> %d\n", HLIT);
+        //printf("HLIT -> %d\n", HLIT);
 
         char HDIST = getBits(gzFile, &availBits, 5, &rb);
-        printf("HDIST -> %d\n", HDIST);
+        //printf("HDIST -> %d\n", HDIST);
 
         char HCLEN = getBits(gzFile, &availBits, 4, &rb);
-        printf("HCLEN -> %d\n", HCLEN);
+        //printf("HCLEN -> %d\n", HCLEN);
 
         block_p first_block = (block_p)calloc(19, sizeof(Block));
 
@@ -219,7 +223,7 @@ int main(int argc, char** argv)
         //getBin(ht, first_block, 19);
 
         printf("\n############## FIRST BLOCK ##############\n\n");
-        print_blocks(first_block, 19);
+        //print_blocks(first_block, 19);
 
         block_p second_block = (block_p)calloc(HLIT + 257, sizeof(Block));
         getBlockHuffmanCode(gzFile, second_block, first_ht, &availBits, &rb, HLIT + 257);
@@ -228,7 +232,7 @@ int main(int argc, char** argv)
         getHuffmanCodes(second_ht, second_block, HLIT + 257);
 
         printf("\n############## SECOND BLOCK ##############\n\n");
-        print_blocks(second_block, HLIT + 257);
+        //print_blocks(second_block, HLIT + 257);
 
         block_p third_block = (block_p)calloc(HDIST + 1, sizeof(Block));
         getBlockHuffmanCode(gzFile, third_block, first_ht, &availBits, &rb, HDIST + 1);
@@ -237,14 +241,11 @@ int main(int argc, char** argv)
         getHuffmanCodes(third_ht, third_block, HDIST + 1);
 
         printf("\n############## THIRD BLOCK ##############\n\n");
-        print_blocks(third_block, HDIST + 1);
+        //print_blocks(third_block, HDIST + 1);
+        //print_htree(third_ht -> root, 0);
 
         read_data(gzFile, second_ht, third_ht, &availBits, &rb);
 
-        //int i;
-        //for(i = 0; i < 257 + HLIT; i++){
-        //printf("%d -> %d\n", i, hlit_cod_comp[i]);
-        //}
         //--- Se chegou aqui --> compactado com Huffman dinâmico --> descompactar
         //**************************************************
         //****** ADICIONAR PROGRAMA... *********************
@@ -252,8 +253,15 @@ int main(int argc, char** argv)
 
         //actualizar número de blocos analisados
         numBlocks++;
+        free_tree(first_ht->root);
+        free_tree(second_ht->root);
+        free_tree(third_ht->root);
     }while(BFINAL == 0);
 
+    printf("\nEND\n");
+    printf("Original size: %ld\n", origFileSize);
+    printf("My Original size: %lu\n", data_read);
+    write_to_file(origFileSize);
 
     //terminações
     fclose(gzFile);
@@ -271,9 +279,17 @@ int main(int argc, char** argv)
     return EXIT_SUCCESS;
 }
 
+void free_tree(HFNode *node){
+    if (node == NULL) return;
 
-char getBits(FILE *f, char *availBits, char needBits, unsigned int *rb){
-    char result;
+    free_tree(node->left);
+    free_tree(node->right);
+    free(node);
+}
+
+unsigned int getBits(FILE *f, char *availBits, unsigned int needBits, unsigned int *rb){
+
+    unsigned int result;
     unsigned char byte;
     while(*availBits < needBits){
         fread(&byte, 1, 1, f);
@@ -288,9 +304,6 @@ char getBits(FILE *f, char *availBits, char needBits, unsigned int *rb){
 }
 
 int mask(int numBits){
-    //int mask = 1;
-    //mask = mask << numBits;
-    //return mask - 1;
     return (1 << numBits) - 1;
 }
 
@@ -308,7 +321,6 @@ void getHuffmanCodes(HuffmanTree *ht, block_p head, int size){
     int *unique_vals;
     int counter = 0;
     int last;
-    block_p head_cp = head;
 
     unique_vals = getUniqueValues(head, size, &unique_vals_size);
 
@@ -322,7 +334,7 @@ void getHuffmanCodes(HuffmanTree *ht, block_p head, int size){
                 head[j].dec = counter++;
                 bits2String(head[j].bin, head[j].dec, head[j].len);
                 if((err = addNode(ht, head[j].bin, j, 0)) < 0)
-                    printf("error: %d\n", err);
+                    printf("error l:326: %d\n", err);
             }
         }
         counter *= 2;
@@ -397,24 +409,28 @@ void getBlockHuffmanCode(FILE *f, block_p head, HuffmanTree *ht, char *availBits
 }
 
 void read_data(FILE *f, HuffmanTree *comp_lit, HuffmanTree *distances, char *availBits, unsigned int *rb){
-    int n, i, j, k, lenght, backwards_distance;
-    char bit;
-    unsigned char arr[getOrigFileSize(f)];
+    unsigned int j, k, lenght, backwards_distance;
+    int n;
+    unsigned int bit;
+    //unsigned char content[getOrigFileSize(f)];
 
-    i = 0;
     while(1){
         bit = getBits(f, availBits, 1, rb) + '0';
         n = nextNode(comp_lit, bit);
 
+        //printf("%ld - %ld\n", data_read, origFileSize);
         if(n >= 0){
             if(n == 256){
-                printf("%s", arr);
-                printf("\nEND\n");
+                //printf("256\n");
+                content[origFileSize-1] = '\0';
+                printf("data_read: %lu\n", data_read);
                 return;
             }
 
-            if(n < 257)
-                arr[i++] = (char)n;
+            if(n < 257){
+                //printf("257\n");
+                content[data_read++] = (char)n;
+            }
 
             else{
                 lenght = getBits(f, availBits, lengths[n-257].bits, rb) + lengths[n-257].shift;
@@ -422,20 +438,29 @@ void read_data(FILE *f, HuffmanTree *comp_lit, HuffmanTree *distances, char *ava
                 do{
                     bit = getBits(f, availBits, 1, rb) + '0';
                     n = nextNode(distances, bit);
+                    //printf("bit -> %c n -> %d\n", bit, n);
+                    //getchar();
                 }while(n < 0);
 
-                backwards_distance = getBits(f, availBits, dists[n].bits, rb) + dists[n].shift;
+                backwards_distance = getBits(f, availBits, dists[n].bits, rb);
+                backwards_distance += dists[n].shift;
+                //getchar();
 
-                k = i;
+                k = data_read;
                 for(j = k - backwards_distance; j < k - backwards_distance + lenght; j++){
-                    arr[i++] = arr[j];
+                    //printf("inside_for\n");
+                    content[data_read++] = content[j];
                 }
+                //printf("length -> %d distance -> %d\n", lenght, backwards_distance);
+                //printf("%s", content);
+                //getchar();
+                //printf("\n**************\n");
             }
             resetCurNode(distances);
             resetCurNode(comp_lit);
-            //getchar();
         }
     }
+    printf("finished\n");
     return;
 }
 
@@ -449,6 +474,32 @@ void print_blocks(block_p head, int size){
     for(i = 0; i < size; i++){
         printf("%d -> %d %d %s\n", i, head[i].len, head[i].dec, head[i].bin);
     }
+}
+
+char *getOrigFileName(){
+    char *origFileName = (char*)malloc(sizeof(char) * 1024);
+    char *p;
+
+    //printf("FileName = %s\n", fileName);
+    p = strtok(fileName, ".");
+    //printf("p: %s\n", p);
+    strcpy(origFileName, p);
+    //printf("origFileName = %s\n", origFileName);
+    strcat(origFileName, ".");
+    p = strtok(NULL, ".");
+    //printf("p: %s\n", p);
+    strcat(origFileName, p);
+    //printf("origFileName = %s\n", origFileName);
+    strcat(origFileName, "\0");
+
+    printf("origFileName = %s\n", origFileName);
+    return origFileName;
+}
+
+void write_to_file(unsigned int size){
+    FILE *result_file = fopen(getOrigFileName(), "wb");
+    fwrite(content, sizeof(unsigned char), size, result_file);
+    fclose(result_file);
 }
 //---------------------------------------------------------------
 //Lê o cabeçalho do ficheiro gzip: devolve erro (-1) se o formato for inválidodevolve, ou 0 se ok
@@ -625,7 +676,6 @@ long getOrigFileSize(FILE * gzFile)
         fread(&byte, 1, 1, gzFile);
         sz = (byte << 8*(i+1)) + sz;
     }
-
 
     //restaura file pointer
     fseek(gzFile, fp, SEEK_SET);

@@ -1,4 +1,6 @@
 run: exec
-	./exec FAQ.txt.gz
+	gzip $(file)
+	rm -rf $(file)
+	./exec $(file).gz
 exec: gzip.cpp huffman.cpp
-	g++ gzip.cpp huffman.cpp -o exec
+	g++ -g -Wall gzip.cpp huffman.cpp -o exec

@@ -2,6 +2,7 @@
    Teoria da Informação, LEI, 2007/2008*/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include "huffman.h"
 #include <limits.h>
@@ -33,19 +34,22 @@ typedef struct header
 typedef struct block *block_p;
 typedef struct block{
   char len;
-  int dec;
+  unsigned int dec;
   char *bin;
 } Block;
 
 typedef struct data_info *data_info_p;
 typedef struct data_info{
-    int bits;
-    int shift;
+    unsigned int bits;
+    unsigned int shift;
 }Data_info;
 
+unsigned long data_read;
+unsigned char *content;
 data_info_p lengths;
-
 data_info_p dists;
+char *fileName;
+long origFileSize;
 
 int cmpfunc (const void * a, const void * b);
 long getOrigFileSize(FILE *gzFile);
@@ -58,9 +62,12 @@ void print_blocks(block_p head, int size);
 void getBin(HuffmanTree *ht, block_p head, int size);
 void read_huffman_lit(int hlit_cod_comp[], HuffmanTree* Root_cod_comp, char* needBits,char * availBits, unsigned char* byte, unsigned int * rb, int num_codes, FILE* gzFile);
 int mask(int numBits);
-char getBits(FILE *f, char *availBits, char needBits, unsigned int *rb);
+unsigned int getBits(FILE *f, char *availBits, unsigned int needBits, unsigned int *rb);
 void getBlock(FILE *f, char *availBits, char needBits, unsigned int *rb, int iter, block_p head, int* sequence);
 void getHuffmanCodes(HuffmanTree *ht, block_p head, int size);
 int *getUniqueValues(block_p head, int size, int *unique_vals_size);
 void getBlockHuffmanCode(FILE *f, block_p head, HuffmanTree *ht, char *availBits, unsigned int *rb, int iter);
 void read_data(FILE *f, HuffmanTree *comp_lit, HuffmanTree *dist, char *availBits, unsigned int *rb);
+void write_to_file(unsigned int size);
+void free_tree(HFNode *node);
+char *getOrigFileName();
